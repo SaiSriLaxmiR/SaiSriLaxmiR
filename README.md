@@ -1,7 +1,7 @@
 <div align="center">
 
 <img src="profile.png" 
-     width="160" 
+     width="220" 
      alt="Sai Sri Laxmi"/>
 
 <br/>
