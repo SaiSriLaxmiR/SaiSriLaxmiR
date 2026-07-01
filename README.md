@@ -1,3 +1,4 @@
+<img width="1448" height="1086" alt="image" src="https://github.com/user-attachments/assets/afd457ee-cd9c-423a-bdbc-4f7ea884b4da" />
 # Hi, I'm Sai Sri Laxmi 👋
 
 Research Interests
