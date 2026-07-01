@@ -1,16 +1,32 @@
-## Hi there 👋
+# Hi, I'm Sai Sri Laxmi 👋
 
-<!--
-**SaiSriLaxmiR/SaiSriLaxmiR** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+Research Interests
+• Trustworthy AI
+• Large Language Models
+• Natural Language Processing
+• Multimodal AI
+• Retrieval-Augmented Generation
+• AI Alignment
 
-Here are some ideas to get you started:
+Currently
+• Researching entropy-based toxicity detection
+• Building trustworthy LLM systems
+• Exploring multimodal reasoning
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+Tech Stack
+Python • PyTorch • Hugging Face • LangChain • FAISS • ChromaDB
+Transformers • Docker • Git
+
+Featured Projects
+→ RecIntel - AI native Recruitment Intelligence
+→ Runtime Hallucination Detection
+→ Agentic RAG
+→ Entropy-based Toxicity Detection
+
+Publications
+(Currently preparing first manuscript)
+
+Contact
+LinkedIn
+Email
+Google Scholar (when available)
