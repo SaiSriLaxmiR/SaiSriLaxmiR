@@ -1,5 +1,12 @@
-<img width="1448" height="1086" alt="image" src="https://github.com/user-attachments/assets/afd457ee-cd9c-423a-bdbc-4f7ea884b4da" />
+<div align="center">
+
+<img src="assets/profile.png" width="220" alt="Sai Sri Laxmi">
+
 # Hi, I'm Sai Sri Laxmi 👋
+
+**Trustworthy AI • Large Language Models • NLP • Multimodal AI • RAG**
+
+</div>
 
 Research Interests
 • Trustworthy AI
