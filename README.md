@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/profile.png" width="220" alt="Sai Sri Laxmi">
+<img src="profile.png" width="220" alt="Sai Sri Laxmi">
 
 # Hi, I'm Sai Sri Laxmi 👋
 
