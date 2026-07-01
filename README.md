@@ -1,5 +1,5 @@
 <div align="center">
-
+<img src="profile.png" width="220" alt="Sai Sri Laxmi">
 # Sai Sri Laxmi
 
 **NLP Researcher · Trustworthy AI · Code-Mixed Language Processing**
