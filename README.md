@@ -5,7 +5,6 @@
      alt="Sai Sri Laxmi"/>
 
 <br/>
-<br/>
 
 ### Hi, I'm Sai Sri Laxmi 👋
 
@@ -61,7 +60,7 @@ Real-time system for detecting hallucinated content in LLM outputs using entropy
 
 ---
 
-### 🤖 Deep Research Agent - Agentic RAG
+### 🤖 Deep Research Agent
 Multi-agent research system that dynamically spawns N parallel researcher agents at runtime using LangGraph. A critic agent evaluates coverage across agent outputs and triggers additional research passes where gaps exist. Async background tasks with SQLite checkpointing for fault-tolerant state persistence across long-running sessions.
 
 **Stack:** Python · LangGraph · SQLite · async Python
