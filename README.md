@@ -1,15 +1,22 @@
 <div align="center">
-<img src="profile.png" width="220" alt="Sai Sri Laxmi">
-# Sai Sri Laxmi
 
-**NLP Researcher · Trustworthy AI · Code-Mixed Language Processing**
+<img src="profile.png" 
+     width="160" 
+     alt="Sai Sri Laxmi"/>
+
+<br/>
+<br/>
+
+### Hi, I'm Sai Sri Laxmi 👋
+
+**B.Tech · IIT Bombay**
+
+<br/>
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/sai-sri-laxmi/)
 [![Email](https://img.shields.io/badge/Email-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:saisrilaxmiryakam@gmail.com)
 
 </div>
-
----
 
 ## About
 
