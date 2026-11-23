@@ -1,8 +1,20 @@
-# Cloud Identity Verification on AWS
+# Kavira
 
-A production-oriented serverless identity verification service built with **AWS Rekognition, Lambda, API Gateway, DynamoDB, S3, CloudWatch, and AWS SAM**. The system supports reference-image enrollment, face liveness orchestration, confidence-threshold verification, encrypted storage, least-privilege service access, and operational metrics.
+**Cloud Identity Verification on AWS**
+
+Kavira is a consent-based identity verification application built with **React, AWS Rekognition, Lambda, API Gateway, DynamoDB, S3, CloudWatch, and AWS SAM**. It combines a lightweight user-facing web client with a serverless backend for reference-face enrollment, liveness validation, confidence-threshold matching, encrypted storage, and operational monitoring.
 
 > **Privacy note:** This project is intended for consent-based identity verification demos. Do not use it for covert identification or surveillance. Use only images you own or have permission to process.
+
+## Product experience
+
+Kavira is designed as a simple three-step identity flow:
+
+1. **Enroll** a consented reference face.
+2. **Validate liveness** through an Amazon Rekognition Face Liveness session.
+3. **Verify identity** by comparing a probe image with the enrolled reference after liveness succeeds.
+
+The included React/Vite client exposes these flows through a clean web interface and displays API responses for debugging and demonstration.
 
 ## Why this project
 
@@ -66,6 +78,12 @@ aws-cloud-identity-verification/
 │   ├── test_enrollment.py
 │   ├── test_liveness.py
 │   └── test_verification.py
+├── web/
+│   ├── src/
+│   │   ├── App.jsx            # Enrollment, liveness, verification UI
+│   │   └── styles.css
+│   ├── index.html
+│   └── package.json
 ├── scripts/
 │   └── encode_image.py
 ├── template.yaml              # AWS SAM infrastructure
@@ -86,6 +104,16 @@ pytest
 ```
 
 The unit tests mock AWS clients, so they do **not** require AWS credentials or make network calls. The current modular suite contains **9 tests** covering routing, enrollment, liveness, verification success/failure paths, and persistence interactions.
+
+## Run the web client
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Set `VITE_API_BASE_URL` to the deployed API Gateway base URL. A template is provided in `web/.env.example`.
 
 ## Deploy with AWS SAM
 
@@ -115,7 +143,7 @@ sam deploy --guided
 
 ## Resume-ready description
 
-**Cloud Identity Verification | AWS Rekognition, Lambda, API Gateway, DynamoDB, S3**
+**Kavira | React, AWS Rekognition, Lambda, API Gateway, DynamoDB, S3**
 
-- Built a serverless identity-verification service using AWS Rekognition, Lambda, API Gateway, and DynamoDB, supporting face matching and liveness-based verification through REST APIs.
-- Added confidence-threshold validation, IAM-scoped service access, encrypted storage, and CloudWatch monitoring for failed matches, spoof/liveness failures, and service errors.
+- Built a consent-based identity-verification app with a React client and serverless AWS backend supporting face enrollment, liveness validation, and REST-based identity verification.
+- Engineered Rekognition, Lambda, DynamoDB, encrypted S3 storage, IAM-scoped access, CloudWatch monitoring, and a 9-test automated suite covering success and failure paths.
