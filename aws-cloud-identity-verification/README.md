@@ -1,14 +1,14 @@
-# Kavira
+# Authra
 
 **Cloud Identity Verification on AWS**
 
-Kavira is a consent-based identity verification application built with **React, AWS Rekognition, Lambda, API Gateway, DynamoDB, S3, CloudWatch, and AWS SAM**. It combines a lightweight user-facing web client with a serverless backend for reference-face enrollment, liveness validation, confidence-threshold matching, encrypted storage, and operational monitoring.
+Authra is a consent-based identity verification application built with **React, AWS Rekognition, Lambda, API Gateway, DynamoDB, S3, CloudWatch, and AWS SAM**. It combines a lightweight user-facing web client with a serverless backend for reference-face enrollment, liveness validation, confidence-threshold matching, encrypted storage, and operational monitoring.
 
 > **Privacy note:** This project is intended for consent-based identity verification demos. Do not use it for covert identification or surveillance. Use only images you own or have permission to process.
 
 ## Product experience
 
-Kavira is designed as a simple three-step identity flow:
+Authra is designed as a simple three-step identity flow:
 
 1. **Enroll** a consented reference face.
 2. **Validate liveness** through an Amazon Rekognition Face Liveness session.
@@ -143,7 +143,7 @@ sam deploy --guided
 
 ## Resume-ready description
 
-**Kavira | React, AWS Rekognition, Lambda, API Gateway, DynamoDB, S3**
+**Authra | React, AWS Rekognition, Lambda, API Gateway, DynamoDB, S3**
 
 - Built a consent-based identity-verification app with a React client and serverless AWS backend supporting face enrollment, liveness validation, and REST-based identity verification.
 - Engineered Rekognition, Lambda, DynamoDB, encrypted S3 storage, IAM-scoped access, CloudWatch monitoring, and a 9-test automated suite covering success and failure paths.
