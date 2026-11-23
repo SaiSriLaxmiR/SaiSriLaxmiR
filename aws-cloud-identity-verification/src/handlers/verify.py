@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
 from src.config import MATCH_THRESHOLD
+from src.services.history import record_verification
 from src.services.metrics import emit_metric
 from src.services.rekognition_service import (
     compare_with_reference,
@@ -42,6 +43,13 @@ def handle_verify(event: Dict[str, Any]) -> Dict[str, Any]:
         "VerificationSuccess"
         if verified
         else "VerificationFailure"
+    )
+
+    record_verification(
+        user_id=user_id,
+        verified=verified,
+        similarity=similarity,
+        liveness_confidence=float(liveness.get("confidence", 0)),
     )
 
     return response(
