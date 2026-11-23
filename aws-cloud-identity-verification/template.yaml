@@ -11,6 +11,7 @@ Globals:
     Environment:
       Variables:
         TABLE_NAME: !Ref IdentityTable
+        VERIFICATION_TABLE: !Ref VerificationTable
         IMAGE_BUCKET: !Ref ReferenceImageBucket
         MATCH_THRESHOLD: '90'
         LIVENESS_THRESHOLD: '90'
@@ -42,6 +43,8 @@ Resources:
             BucketName: !Ref ReferenceImageBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref IdentityTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VerificationTable
         - Statement:
             - Effect: Allow
               Action:
@@ -73,6 +76,12 @@ Resources:
             ApiId: !Ref IdentityApi
             Path: /verify
             Method: POST
+        History:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref IdentityApi
+            Path: /history/{user_id}
+            Method: GET
         CreateLiveness:
           Type: HttpApi
           Properties:
@@ -96,6 +105,25 @@ Resources:
       KeySchema:
         - AttributeName: user_id
           KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+
+  VerificationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: record_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+        - AttributeName: record_id
+          KeyType: RANGE
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: true
       SSESpecification:
