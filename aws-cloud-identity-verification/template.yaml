@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless identity verification using Rekognition, Lambda, API Gateway, DynamoDB, S3, and CloudWatch.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 20
+    MemorySize: 512
+    Tracing: Active
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref IdentityTable
+        IMAGE_BUCKET: !Ref ReferenceImageBucket
+        MATCH_THRESHOLD: '90'
+        LIVENESS_THRESHOLD: '90'
+        MAX_IMAGE_BYTES: '5242880'
+
+Resources:
+  IdentityApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+        AllowMethods:
+          - GET
+          - POST
+
+  IdentityFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src.app.lambda_handler
+      Description: Enrollment, liveness orchestration, and face verification API.
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ReferenceImageBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref IdentityTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - rekognition:DetectFaces
+                - rekognition:CompareFaces
+                - rekognition:CreateFaceLivenessSession
+                - rekognition:GetFaceLivenessSessionResults
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - cloudwatch:PutMetricData
+              Resource: '*'
+      Events:
+        Health:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref IdentityApi
+            Path: /health
+            Method: GET
+        Enroll:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref IdentityApi
+            Path: /enroll
+            Method: POST
+        Verify:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref IdentityApi
+            Path: /verify
+            Method: POST
+        CreateLiveness:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref IdentityApi
+            Path: /liveness/session
+            Method: POST
+        GetLiveness:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref IdentityApi
+            Path: /liveness/{session_id}
+            Method: GET
+
+  IdentityTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+
+  ReferenceImageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+
+Outputs:
+  ApiUrl:
+    Description: Base URL for the deployed HTTP API.
+    Value: !Sub 'https://${IdentityApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
