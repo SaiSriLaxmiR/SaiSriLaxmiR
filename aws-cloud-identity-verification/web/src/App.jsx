@@ -1,227 +1,500 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  apiReady,
+  createLivenessSession,
+  enrollUser,
+  getHistory,
+  getLivenessResult,
+  verifyUser,
+} from "./api";
+import CameraCapture from "./components/CameraCapture";
 
-async function toBase64(file) {
-  const buffer = await file.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 1) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
+const navItems = ["Dashboard", "Enroll", "Verify", "History"];
 
-async function request(baseUrl, path, options = {}) {
-  const response = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error || `Request failed: ${response.status}`);
-  }
-  return data;
-}
-
-function Result({ data }) {
-  if (!data) return null;
+function MetricCard({ label, value, hint }) {
   return (
-    <pre className="result" aria-live="polite">
-      {JSON.stringify(data, null, 2)}
-    </pre>
+    <article className="metric-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{hint}</small>
+    </article>
   );
+}
+
+function VerificationBadge({ verified }) {
+  return (
+    <span className={`status ${verified ? "success" : "danger"}`}>
+      {verified ? "Verified" : "Rejected"}
+    </span>
+  );
+}
+
+function EmptyState({ children }) {
+  return <div className="empty-state">{children}</div>;
 }
 
 export default function App() {
-  const [baseUrl, setBaseUrl] = useState(
-    import.meta.env.VITE_API_BASE_URL || "",
-  );
+  const [active, setActive] = useState("Dashboard");
   const [userId, setUserId] = useState("demo-user");
   const [referenceImage, setReferenceImage] = useState(null);
   const [probeImage, setProbeImage] = useState(null);
   const [sessionId, setSessionId] = useState("");
-  const [result, setResult] = useState(null);
-  const [status, setStatus] = useState("");
+  const [liveness, setLiveness] = useState(null);
+  const [verification, setVerification] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const ready = useMemo(() => Boolean(baseUrl.trim()), [baseUrl]);
+  const configured = apiReady();
 
-  async function run(label, fn) {
+  const stats = useMemo(() => {
+    const total = history.length;
+    const passed = history.filter((item) => item.verified).length;
+    const average =
+      total === 0
+        ? 0
+        : history.reduce(
+            (sum, item) => sum + Number(item.similarity || 0),
+            0,
+          ) / total;
+    return {
+      total,
+      passed,
+      passRate: total ? Math.round((passed / total) * 100) : 0,
+      average: average ? average.toFixed(1) : "—",
+    };
+  }, [history]);
+
+  async function run(message, fn) {
     setBusy(true);
-    setStatus(label);
-    setResult(null);
+    setNotice(message);
     try {
-      setResult(await fn());
-      setStatus("Done");
+      const value = await fn();
+      setNotice("Completed successfully");
+      return value;
     } catch (error) {
-      setResult({ error: error.message });
-      setStatus("Request failed");
+      setNotice(error.message);
+      throw error;
     } finally {
       setBusy(false);
     }
   }
 
-  async function enroll() {
-    if (!referenceImage) throw new Error("Choose a reference image");
-    const imageBase64 = await toBase64(referenceImage);
-    return request(baseUrl, "/enroll", {
-      method: "POST",
-      body: JSON.stringify({
-        user_id: userId,
-        image_base64: imageBase64,
-      }),
-    });
+  async function refreshHistory() {
+    if (!configured || !userId.trim()) return;
+    try {
+      const data = await getHistory(userId.trim());
+      setHistory(data.items || []);
+    } catch {
+      setHistory([]);
+    }
   }
 
-  async function createLiveness() {
-    const data = await request(baseUrl, "/liveness/session", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-    setSessionId(data.session_id);
-    return data;
+  useEffect(() => {
+    if (active === "Dashboard" || active === "History") {
+      refreshHistory();
+    }
+  }, [active, userId]);
+
+  async function handleEnroll() {
+    if (!referenceImage) {
+      setNotice("Add a reference image first.");
+      return;
+    }
+    try {
+      await run("Creating encrypted enrollment...", () =>
+        enrollUser(userId.trim(), referenceImage.base64),
+      );
+      setActive("Verify");
+    } catch {
+      // Notice is already set by run().
+    }
   }
 
-  async function checkLiveness() {
-    if (!sessionId) throw new Error("Enter a liveness session ID");
-    return request(
-      baseUrl,
-      `/liveness/${encodeURIComponent(sessionId)}`,
-    );
+  async function handleCreateLiveness() {
+    try {
+      const data = await run("Creating liveness session...", () =>
+        createLivenessSession(),
+      );
+      setSessionId(data.session_id);
+      setLiveness(null);
+    } catch {
+      // Notice is already set by run().
+    }
   }
 
-  async function verify() {
-    if (!probeImage) throw new Error("Choose a probe image");
-    if (!sessionId) throw new Error("Enter a completed liveness session ID");
+  async function handleCheckLiveness() {
+    if (!sessionId) {
+      setNotice("Create or enter a liveness session first.");
+      return;
+    }
+    try {
+      const data = await run("Checking liveness...", () =>
+        getLivenessResult(sessionId),
+      );
+      setLiveness(data);
+    } catch {
+      // Notice is already set by run().
+    }
+  }
 
-    const imageBase64 = await toBase64(probeImage);
-    return request(baseUrl, "/verify", {
-      method: "POST",
-      body: JSON.stringify({
-        user_id: userId,
-        image_base64: imageBase64,
-        liveness_session_id: sessionId,
-      }),
-    });
+  async function handleVerify() {
+    if (!probeImage) {
+      setNotice("Add a verification image first.");
+      return;
+    }
+    if (!sessionId) {
+      setNotice("A completed liveness session is required.");
+      return;
+    }
+    try {
+      const data = await run("Comparing identity...", () =>
+        verifyUser(userId.trim(), probeImage.base64, sessionId),
+      );
+      setVerification(data);
+      await refreshHistory();
+    } catch {
+      // Notice is already set by run().
+    }
   }
 
   return (
-    <main className="page-shell">
-      <section className="hero">
-        <div className="brand-mark">A</div>
-        <div>
-          <p className="eyebrow">AWS SERVERLESS IDENTITY VERIFICATION</p>
-          <h1>Authra</h1>
-          <p className="subtitle">
-            Consent-based face enrollment, liveness validation, and
-            identity verification through a serverless AWS backend.
-          </p>
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-mark">A</div>
+          <div>
+            <strong>Authra</strong>
+            <span>Identity Cloud</span>
+          </div>
         </div>
-      </section>
 
-      <section className="panel config-panel">
-        <label>
-          API base URL
-          <input
-            value={baseUrl}
-            onChange={(event) => setBaseUrl(event.target.value)}
-            placeholder="https://...execute-api...amazonaws.com/prod"
-          />
-        </label>
-        <label>
-          User ID
-          <input
-            value={userId}
-            onChange={(event) => setUserId(event.target.value)}
-          />
-        </label>
-      </section>
+        <nav>
+          {navItems.map((item) => (
+            <button
+              key={item}
+              className={active === item ? "nav-item active" : "nav-item"}
+              onClick={() => setActive(item)}
+            >
+              <span className="nav-dot" />
+              {item}
+            </button>
+          ))}
+        </nav>
 
-      <section className="grid">
-        <article className="panel">
-          <span className="step">01</span>
-          <h2>Enroll</h2>
-          <p>Register one consented reference face for the user.</p>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(event) =>
-              setReferenceImage(event.target.files?.[0] || null)
-            }
-          />
-          <button
-            disabled={!ready || busy}
-            onClick={() => run("Enrolling...", enroll)}
-          >
-            Enroll reference
-          </button>
-        </article>
-
-        <article className="panel">
-          <span className="step">02</span>
-          <h2>Liveness</h2>
-          <p>
-            Create a Face Liveness session, then use its ID after the
-            supported AWS client flow completes.
-          </p>
-          <button
-            disabled={!ready || busy}
-            onClick={() => run("Creating session...", createLiveness)}
-          >
-            Create session
-          </button>
-          <input
-            value={sessionId}
-            onChange={(event) => setSessionId(event.target.value)}
-            placeholder="Liveness session ID"
-          />
-          <button
-            className="secondary"
-            disabled={!ready || busy || !sessionId}
-            onClick={() => run("Checking liveness...", checkLiveness)}
-          >
-            Check result
-          </button>
-        </article>
-
-        <article className="panel">
-          <span className="step">03</span>
-          <h2>Verify</h2>
-          <p>
-            Compare a live probe image with the enrolled reference after
-            liveness succeeds.
-          </p>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(event) =>
-              setProbeImage(event.target.files?.[0] || null)
-            }
-          />
-          <button
-            disabled={!ready || busy}
-            onClick={() => run("Verifying...", verify)}
-          >
-            Verify identity
-          </button>
-        </article>
-      </section>
-
-      <section className="panel output-panel">
-        <div>
-          <p className="eyebrow">API RESPONSE</p>
-          <h2>{status || "Ready"}</h2>
+        <div className="sidebar-foot">
+          <span className={configured ? "status success" : "status warning"}>
+            {configured ? "AWS connected" : "API not configured"}
+          </span>
+          <small>Consent-based verification only</small>
         </div>
-        <Result data={result} />
-      </section>
+      </aside>
 
-      <footer>
-        Authra is a portfolio project for consent-based identity verification.
-        It is not intended for covert identification or surveillance.
-      </footer>
-    </main>
+      <main className="workspace">
+        <header className="topbar">
+          <div>
+            <span className="micro-label">AUTHRA IDENTITY CLOUD</span>
+            <h1>{active}</h1>
+          </div>
+          <div className="user-control">
+            <label htmlFor="user-id">User ID</label>
+            <input
+              id="user-id"
+              value={userId}
+              onChange={(event) => setUserId(event.target.value)}
+            />
+          </div>
+        </header>
+
+        {!configured && (
+          <section className="config-banner">
+            <strong>Backend not connected yet.</strong>
+            <span>
+              Add your deployed API Gateway URL to
+              <code> web/.env </code>
+              as <code>VITE_API_BASE_URL</code>.
+            </span>
+          </section>
+        )}
+
+        {notice && <div className="toast">{notice}</div>}
+
+        {active === "Dashboard" && (
+          <>
+            <section className="hero-card">
+              <div>
+                <span className="micro-label">SERVERLESS IDENTITY VERIFICATION</span>
+                <h2>Verify people, not passwords.</h2>
+                <p>
+                  Authra combines face enrollment, liveness validation,
+                  encrypted storage, and AWS-native verification in one
+                  lightweight workflow.
+                </p>
+                <div className="hero-actions">
+                  <button onClick={() => setActive("Enroll")}>
+                    Enroll identity
+                  </button>
+                  <button
+                    className="button-secondary"
+                    onClick={() => setActive("Verify")}
+                  >
+                    Run verification
+                  </button>
+                </div>
+              </div>
+              <div className="security-visual">
+                <div className="scan-ring">
+                  <div className="scan-face">◎</div>
+                </div>
+                <span>Rekognition + Liveness</span>
+              </div>
+            </section>
+
+            <section className="metrics-grid">
+              <MetricCard
+                label="Verification attempts"
+                value={stats.total}
+                hint="Recent records"
+              />
+              <MetricCard
+                label="Pass rate"
+                value={`${stats.passRate}%`}
+                hint="Verified attempts"
+              />
+              <MetricCard
+                label="Avg. face similarity"
+                value={stats.average === "—" ? "—" : `${stats.average}%`}
+                hint="Rekognition score"
+              />
+              <MetricCard
+                label="Security"
+                value="Encrypted"
+                hint="S3 + DynamoDB"
+              />
+            </section>
+
+            <section className="two-column">
+              <article className="surface">
+                <div className="section-head">
+                  <div>
+                    <span className="micro-label">RECENT ACTIVITY</span>
+                    <h3>Verification history</h3>
+                  </div>
+                  <button
+                    className="text-button"
+                    onClick={() => setActive("History")}
+                  >
+                    View all
+                  </button>
+                </div>
+                {history.length ? (
+                  <div className="activity-list">
+                    {history.slice(0, 5).map((item) => (
+                      <div className="activity-row" key={item.record_id}>
+                        <div>
+                          <strong>{item.user_id}</strong>
+                          <span>
+                            {new Date(item.created_at).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="activity-score">
+                          <strong>{Number(item.similarity).toFixed(1)}%</strong>
+                          <VerificationBadge verified={item.verified} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState>
+                    Run a verification to populate real activity.
+                  </EmptyState>
+                )}
+              </article>
+
+              <article className="surface">
+                <span className="micro-label">SYSTEM DESIGN</span>
+                <h3>AWS-native by default</h3>
+                <div className="stack-list">
+                  <div><b>API Gateway</b><span>REST entrypoint</span></div>
+                  <div><b>Lambda</b><span>Serverless compute</span></div>
+                  <div><b>Rekognition</b><span>Face + liveness</span></div>
+                  <div><b>DynamoDB</b><span>Identity + history</span></div>
+                  <div><b>S3</b><span>Encrypted reference images</span></div>
+                  <div><b>CloudWatch</b><span>Operational metrics</span></div>
+                </div>
+              </article>
+            </section>
+          </>
+        )}
+
+        {active === "Enroll" && (
+          <section className="flow-layout">
+            <div className="flow-copy">
+              <span className="micro-label">STEP 1 OF 3</span>
+              <h2>Create an identity enrollment</h2>
+              <p>
+                Add one clear, consented reference image. Authra validates
+                that exactly one face is present before storing the image
+                in encrypted S3 and the enrollment metadata in DynamoDB.
+              </p>
+              <ul className="check-list">
+                <li>Exactly one face</li>
+                <li>Encrypted object storage</li>
+                <li>Serverless enrollment API</li>
+              </ul>
+            </div>
+            <div>
+              <CameraCapture
+                label="REFERENCE IMAGE"
+                value={referenceImage}
+                onChange={setReferenceImage}
+              />
+              <button
+                className="primary-wide"
+                disabled={!configured || busy || !referenceImage}
+                onClick={handleEnroll}
+              >
+                {busy ? "Enrolling..." : "Create enrollment"}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {active === "Verify" && (
+          <section className="verification-layout">
+            <article className="surface">
+              <span className="micro-label">STEP 2</span>
+              <h3>Liveness session</h3>
+              <p>
+                Create a Rekognition Face Liveness session before identity
+                matching.
+              </p>
+              <button
+                disabled={!configured || busy}
+                onClick={handleCreateLiveness}
+              >
+                Create liveness session
+              </button>
+              <label className="field">
+                Session ID
+                <input
+                  value={sessionId}
+                  onChange={(event) => setSessionId(event.target.value)}
+                  placeholder="Session ID"
+                />
+              </label>
+              <button
+                className="button-secondary"
+                disabled={!configured || busy || !sessionId}
+                onClick={handleCheckLiveness}
+              >
+                Check liveness
+              </button>
+              {liveness && (
+                <div className="result-card compact">
+                  <VerificationBadge verified={liveness.passed} />
+                  <strong>{liveness.confidence}% confidence</strong>
+                  <span>{liveness.status}</span>
+                </div>
+              )}
+            </article>
+
+            <article className="surface">
+              <span className="micro-label">STEP 3</span>
+              <h3>Verify identity</h3>
+              <CameraCapture
+                label="LIVE / PROBE IMAGE"
+                value={probeImage}
+                onChange={setProbeImage}
+              />
+              <button
+                className="primary-wide"
+                disabled={!configured || busy || !probeImage || !sessionId}
+                onClick={handleVerify}
+              >
+                {busy ? "Verifying..." : "Verify identity"}
+              </button>
+            </article>
+
+            <article className="surface result-surface">
+              <span className="micro-label">RESULT</span>
+              {verification ? (
+                <div className="verification-result">
+                  <div
+                    className={
+                      verification.verified
+                        ? "result-orb verified"
+                        : "result-orb rejected"
+                    }
+                  >
+                    {verification.verified ? "✓" : "×"}
+                  </div>
+                  <h2>
+                    {verification.verified
+                      ? "Identity verified"
+                      : "Verification rejected"}
+                  </h2>
+                  <p>
+                    Face similarity:{" "}
+                    <strong>{verification.similarity}%</strong>
+                  </p>
+                  <p>
+                    Liveness confidence:{" "}
+                    <strong>
+                      {verification.liveness?.confidence || 0}%
+                    </strong>
+                  </p>
+                </div>
+              ) : (
+                <EmptyState>
+                  Your verification result will appear here.
+                </EmptyState>
+              )}
+            </article>
+          </section>
+        )}
+
+        {active === "History" && (
+          <section className="surface">
+            <div className="section-head">
+              <div>
+                <span className="micro-label">AUDIT TRAIL</span>
+                <h3>Verification history</h3>
+              </div>
+              <button className="button-secondary" onClick={refreshHistory}>
+                Refresh
+              </button>
+            </div>
+
+            {history.length ? (
+              <div className="history-table">
+                <div className="history-row history-header">
+                  <span>Date</span>
+                  <span>User</span>
+                  <span>Similarity</span>
+                  <span>Liveness</span>
+                  <span>Status</span>
+                </div>
+                {history.map((item) => (
+                  <div className="history-row" key={item.record_id}>
+                    <span>{new Date(item.created_at).toLocaleString()}</span>
+                    <span>{item.user_id}</span>
+                    <span>{Number(item.similarity).toFixed(1)}%</span>
+                    <span>{Number(item.liveness_confidence).toFixed(1)}%</span>
+                    <span>
+                      <VerificationBadge verified={item.verified} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState>
+                No verification records yet for this user.
+              </EmptyState>
+            )}
+          </section>
+        )}
+      </main>
+    </div>
   );
 }
