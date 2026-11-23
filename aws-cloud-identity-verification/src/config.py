@@ -1,6 +1,7 @@
 import os
 
 TABLE_NAME = os.environ.get("TABLE_NAME", "IdentityUsers")
+VERIFICATION_TABLE = os.environ.get("VERIFICATION_TABLE", "VerificationHistory")
 IMAGE_BUCKET = os.environ.get("IMAGE_BUCKET", "identity-reference-images")
 MATCH_THRESHOLD = float(os.environ.get("MATCH_THRESHOLD", "90"))
 LIVENESS_THRESHOLD = float(os.environ.get("LIVENESS_THRESHOLD", "90"))
