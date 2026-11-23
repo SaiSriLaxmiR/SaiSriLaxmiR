@@ -5,6 +5,7 @@ from botocore.exceptions import ClientError
 
 from src.handlers.enroll import handle_enroll
 from src.handlers.health import handle_health
+from src.handlers.history import handle_history
 from src.handlers.liveness import (
     handle_create_liveness,
     handle_get_liveness,
@@ -20,6 +21,7 @@ ROUTES = {
     "GET /health": handle_health,
     "POST /enroll": handle_enroll,
     "POST /verify": handle_verify,
+    "GET /history/{user_id}": handle_history,
     "POST /liveness/session": handle_create_liveness,
     "GET /liveness/{session_id}": handle_get_liveness,
 }
