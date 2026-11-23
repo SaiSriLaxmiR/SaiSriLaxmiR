@@ -41,6 +41,39 @@ flowchart LR
 | `GET` | `/liveness/{session_id}` | Read liveness status/confidence |
 | `POST` | `/verify` | Require passing liveness and compare probe image with enrolled reference |
 
+## Project structure
+
+```text
+aws-cloud-identity-verification/
+├── src/
+│   ├── app.py                 # Lambda entrypoint and route dispatch
+│   ├── config.py              # Environment-driven configuration
+│   ├── aws_clients.py         # AWS SDK clients/resources
+│   ├── handlers/
+│   │   ├── enroll.py          # Enrollment endpoint
+│   │   ├── liveness.py        # Liveness endpoints
+│   │   ├── verify.py          # Verification endpoint
+│   │   └── health.py          # Health endpoint
+│   ├── services/
+│   │   ├── rekognition_service.py
+│   │   ├── storage.py
+│   │   └── metrics.py
+│   └── utils/
+│       ├── http.py
+│       └── validation.py
+├── tests/
+│   ├── test_routes.py
+│   ├── test_enrollment.py
+│   ├── test_liveness.py
+│   └── test_verification.py
+├── scripts/
+│   └── encode_image.py
+├── template.yaml              # AWS SAM infrastructure
+└── requirements.txt
+```
+
+The application is intentionally split into thin request handlers, service-layer AWS integrations, shared validation/HTTP utilities, and a small Lambda entrypoint. This keeps business logic testable and avoids coupling route handling directly to AWS SDK calls.
+
 ## Local setup
 
 Python 3.12 is recommended.
@@ -52,7 +85,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-The unit tests mock AWS clients, so they do **not** require AWS credentials or make network calls.
+The unit tests mock AWS clients, so they do **not** require AWS credentials or make network calls. The current modular suite contains **9 tests** covering routing, enrollment, liveness, verification success/failure paths, and persistence interactions.
 
 ## Deploy with AWS SAM
 
