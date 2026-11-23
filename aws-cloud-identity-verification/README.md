@@ -6,6 +6,18 @@ Authra is a consent-based identity verification application built with **React, 
 
 > **Privacy note:** This project is intended for consent-based identity verification demos. Do not use it for covert identification or surveillance. Use only images you own or have permission to process.
 
+## Full-stack product experience
+
+Authra now includes a responsive React dashboard rather than a developer-only API client. The frontend includes:
+
+- dashboard with real verification metrics
+- webcam capture and image upload
+- consent-based identity enrollment
+- Face Liveness session workflow
+- identity verification with similarity and liveness result cards
+- DynamoDB-backed verification history / audit trail
+- backend connection status and mobile-responsive navigation
+
 ## Product experience
 
 Authra is designed as a simple three-step identity flow:
@@ -52,6 +64,7 @@ flowchart LR
 | `POST` | `/liveness/session` | Create a Rekognition Face Liveness session |
 | `GET` | `/liveness/{session_id}` | Read liveness status/confidence |
 | `POST` | `/verify` | Require passing liveness and compare probe image with enrolled reference |
+| `GET` | `/history/{user_id}` | Return recent persisted verification attempts |
 
 ## Project structure
 
@@ -103,7 +116,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-The unit tests mock AWS clients, so they do **not** require AWS credentials or make network calls. The current modular suite contains **9 tests** covering routing, enrollment, liveness, verification success/failure paths, and persistence interactions.
+The unit tests mock AWS clients, so they do **not** require AWS credentials or make network calls. The modular suite covers routing, enrollment, liveness, verification success/failure paths, persistence interactions, and verification history.
 
 ## Run the web client
 
@@ -145,5 +158,5 @@ sam deploy --guided
 
 **Authra | React, AWS Rekognition, Lambda, API Gateway, DynamoDB, S3**
 
-- Built a consent-based identity-verification app with a React client and serverless AWS backend supporting face enrollment, liveness validation, and REST-based identity verification.
-- Engineered Rekognition, Lambda, DynamoDB, encrypted S3 storage, IAM-scoped access, CloudWatch monitoring, and a 9-test automated suite covering success and failure paths.
+- Built a full-stack identity-verification application with a responsive React dashboard, webcam/image enrollment, liveness workflow, and serverless REST APIs on AWS.
+- Engineered Rekognition-based face matching, encrypted S3 storage, DynamoDB identity/audit records, IAM-scoped access, CloudWatch monitoring, and automated success/failure-path tests.
