@@ -111,10 +111,10 @@ export default function App() {
   return (
     <main className="page-shell">
       <section className="hero">
-        <div className="brand-mark">K</div>
+        <div className="brand-mark">A</div>
         <div>
           <p className="eyebrow">AWS SERVERLESS IDENTITY VERIFICATION</p>
-          <h1>Kavira</h1>
+          <h1>Authra</h1>
           <p className="subtitle">
             Consent-based face enrollment, liveness validation, and
             identity verification through a serverless AWS backend.
@@ -219,7 +219,7 @@ export default function App() {
       </section>
 
       <footer>
-        Kavira is a portfolio project for consent-based identity verification.
+        Authra is a portfolio project for consent-based identity verification.
         It is not intended for covert identification or surveillance.
       </footer>
     </main>
