@@ -1,0 +1,57 @@
+{
+  "dataset": "Mozilla DeepSpeech 0.9.3 public sample audio (LibriSpeech-derived)",
+  "provenance": {
+    "sample_archive": "https://github.com/mozilla/DeepSpeech/releases/download/v0.9.3/audio-0.9.3.tar.gz",
+    "published_comparison": "https://github.com/danielmlow/deepspeech_transcription"
+  },
+  "files": [
+    {
+      "id": "8455-210777-0068.wav",
+      "reference": "your power is sufficient i said",
+      "deepspeech": "your power is sufficient i said",
+      "google_cloud": "your power is sufficient i said",
+      "reference_words": 6,
+      "deepspeech_errors": 0,
+      "deepspeech_wer": 0,
+      "google_cloud_errors": 0,
+      "google_cloud_wer": 0
+    },
+    {
+      "id": "4507-16021-0012.wav",
+      "reference": "why should one halt on the way",
+      "deepspeech": "why should one halt on the way",
+      "google_cloud": "why should one halt on the way",
+      "reference_words": 7,
+      "deepspeech_errors": 0,
+      "deepspeech_wer": 0,
+      "google_cloud_errors": 0,
+      "google_cloud_wer": 0
+    },
+    {
+      "id": "2830-3980-0043.wav",
+      "reference": "experience proves this",
+      "deepspeech": "experience proof this",
+      "google_cloud": "experience proves this",
+      "reference_words": 3,
+      "deepspeech_errors": 1,
+      "deepspeech_wer": 0.3333,
+      "google_cloud_errors": 0,
+      "google_cloud_wer": 0
+    }
+  ],
+  "aggregate": {
+    "utterances": 3,
+    "reference_words": 16,
+    "deepspeech_word_errors": 1,
+    "deepspeech_micro_wer": 0.0625,
+    "deepspeech_word_accuracy_percent": 93.75,
+    "google_cloud_word_errors": 0,
+    "google_cloud_micro_wer": 0,
+    "google_cloud_word_accuracy_percent": 100
+  },
+  "notes": [
+    "Reference and recognizer transcripts come from the cited public comparison repository.",
+    "Auri computes normalized word-level Levenshtein WER from those transcripts.",
+    "These are public-sample comparison measurements, not fresh cloud API calls made by Auri."
+  ]
+}
