@@ -68,6 +68,20 @@ VAD -> ASR -> LLM -> Tool
  Comparison dashboard
 ```
 
+## Real public-audio baseline
+
+Auri includes the public `jackhammer.wav` Harvard-sentence sample used in the SpeechRecognition tutorial. The file is **3.347 s, 44.1 kHz, stereo, 16-bit PCM** and contains the reference phrase **"the stale smell of old beer lingers"** under strong jackhammer noise.
+
+Using the published Google Web Speech API outputs for this exact sample, Auri's word-level evaluation computes:
+
+- **42.86% WER / 57.14% word accuracy** without ambient-noise calibration
+- **42.86% WER / 57.14% word accuracy** with 1.0 s calibration
+- **42.86% WER / 57.14% word accuracy** with 0.5 s calibration
+
+The point of this baseline is to demonstrate measurable noise-induced ASR degradation on real audio. These results are not presented as Deepgram/OpenAI/AWS comparisons; those require running the included provider adapters with valid credentials.
+
+See `benchmark/results/PUBLIC_BASELINE.md` and `benchmark/results/public_jackhammer_baseline.json`.
+
 ## Benchmark commands
 
 ```bash
