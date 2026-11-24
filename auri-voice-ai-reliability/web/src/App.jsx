@@ -283,24 +283,24 @@ export default function App() {
 
         <section className="overview-strip">
           <Metric
-            label="Stacks selected"
-            value={selected.length}
-            helper="comparison set"
+            label="Evaluation suite"
+            value="240"
+            helper="conversation scenarios"
           />
           <Metric
-            label="Metrics"
-            value="6"
-            helper="per pipeline"
+            label="Noise profiles"
+            value="3"
+            helper="clean · cafe · street"
           />
           <Metric
-            label="Failure stages"
-            value="4"
-            helper="VAD · ASR · LLM · Tool"
+            label="Full benchmark"
+            value="2,160"
+            helper="stack-condition runs"
           />
           <Metric
-            label="Judge"
-            value="Grounded"
-            helper="structured diagnostic"
+            label="Reliability metrics"
+            value="8+"
+            helper="WER · p50/p95 · success · cost"
           />
         </section>
 
