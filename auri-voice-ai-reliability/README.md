@@ -82,6 +82,29 @@ The point of this baseline is to demonstrate measurable noise-induced ASR degrad
 
 See `benchmark/results/PUBLIC_BASELINE.md` and `benchmark/results/public_jackhammer_baseline.json`.
 
+## Public multi-file ASR comparison
+
+Auri also recomputes WER on **3 LibriSpeech-derived public clips** with published outputs from **Mozilla DeepSpeech** and **Google Cloud Speech-to-Text**.
+
+Across **16 reference words**:
+
+- DeepSpeech: **1 word error / 16 words → 6.25% micro-WER, 93.75% word accuracy**
+- Google Cloud Speech-to-Text: **0 word errors / 16 words → 0% micro-WER, 100% word accuracy**
+
+One clip exposed the difference clearly: the reference **"experience proves this"** was transcribed by DeepSpeech as **"experience proof this"**, while the published Google Cloud output matched the reference exactly.
+
+See `benchmark/results/PUBLIC_MULTI_ASR.md` and `benchmark/results/public_multifile_asr_comparison.json`.
+
+## Controlled noise robustness
+
+Auri now includes `benchmark/add_noise.py` to mix clean speech with a public noise sample at an explicit SNR. This supports repeatable robustness experiments such as:
+
+- **20 dB SNR** — light noise
+- **10 dB SNR** — moderate noise
+- **0 dB SNR** — speech and noise at equal RMS power
+
+This lets the same utterance be evaluated under controlled degradation rather than comparing unrelated noisy clips.
+
 ## Benchmark commands
 
 ```bash
