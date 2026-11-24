@@ -1,0 +1,23 @@
+[
+  {
+    "id": "deepgram-gpt",
+    "name": "Swift",
+    "vad": "webrtc",
+    "asr": "deepgram",
+    "llm": "openai"
+  },
+  {
+    "id": "openai-bedrock",
+    "name": "Clear",
+    "vad": "silero",
+    "asr": "openai",
+    "llm": "bedrock"
+  },
+  {
+    "id": "aws-native",
+    "name": "Nova",
+    "vad": "aws",
+    "asr": "aws_transcribe",
+    "llm": "bedrock"
+  }
+]
