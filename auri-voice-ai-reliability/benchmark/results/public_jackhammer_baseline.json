@@ -1,0 +1,47 @@
+{
+  "dataset": "Real Python / Harvard Sentences noisy jackhammer sample",
+  "source_audio": "https://github.com/realpython/python-speech-recognition/blob/master/audio_files/jackhammer.wav",
+  "reference_transcript": "the stale smell of old beer lingers",
+  "audio_properties": {
+    "duration_seconds": 3.347,
+    "sample_rate_hz": 44100,
+    "channels": 2,
+    "bit_depth": 16,
+    "format": "PCM WAV",
+    "rms_amplitude": 0.0684,
+    "peak_amplitude": 0.3797,
+    "clipping_percent": 0
+  },
+  "recognition_results": [
+    {
+      "condition": "Google Web Speech API, noisy sample, no ambient calibration",
+      "transcript": "the snail smell of old gear vendors",
+      "word_errors": 3,
+      "reference_words": 7,
+      "wer": 0.4286,
+      "word_accuracy_percent": 57.14
+    },
+    {
+      "condition": "Google Web Speech API, 1.0 s ambient-noise calibration",
+      "transcript": "still smell of old beer vendors",
+      "word_errors": 3,
+      "reference_words": 7,
+      "wer": 0.4286,
+      "word_accuracy_percent": 57.14
+    },
+    {
+      "condition": "Google Web Speech API, 0.5 s ambient-noise calibration",
+      "transcript": "the snail smell like old Beer Mongers",
+      "word_errors": 3,
+      "reference_words": 7,
+      "wer": 0.4286,
+      "word_accuracy_percent": 57.14
+    }
+  ],
+  "notes": [
+    "Recognition outputs are reproduced from the Real Python SpeechRecognition tutorial for this exact public WAV sample.",
+    "WER was computed by Auri's word-level Levenshtein metric against the published reference sentence.",
+    "Audio properties were parsed directly from the public WAV file.",
+    "These values are a measured public-sample baseline, not results from Auri's Deepgram/OpenAI/AWS provider adapters."
+  ]
+}
