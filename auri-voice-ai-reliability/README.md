@@ -39,6 +39,46 @@ The repository includes a clearly labeled simulation mode for validating the ben
 - AWS-ready storage and batch execution hooks
 - automated tests
 
+## AWS production architecture
+
+Auri now includes a distributed AWS execution path in addition to the local benchmark harness:
+
+```text
+React -> FastAPI -> S3
+                  |
+                  +-> DynamoDB run state
+                  |
+                  +-> SQS -> Lambda dispatcher -> AWS Batch / Fargate
+                                                   |
+                                                   v
+                                      Docker benchmark worker
+                                         |             |
+                                         v             v
+                                  Amazon Transcribe  Bedrock
+                                         \             /
+                                          \           /
+                                           v         v
+                                        metrics + diagnosis
+                                             |
+                                  S3 + DynamoDB + CloudWatch
+```
+
+Implemented AWS components:
+
+- **Amazon S3** presigned audio uploads and raw result JSON
+- **Amazon DynamoDB** benchmark run state and result pointers
+- **Amazon SQS** durable benchmark job queue with a dead-letter queue
+- **AWS Lambda** queue-to-Batch dispatcher
+- **AWS Batch on Fargate** isolated Dockerized benchmark workers
+- **Amazon Transcribe** AWS-native ASR adapter
+- **Amazon Bedrock** structured failure-stage diagnostics
+- **Amazon CloudWatch** custom WER and ASR-latency metrics
+- **Amazon ECR** worker image repository template
+- **IAM** scoped API, dispatcher, and worker permissions
+- **CloudFormation** infrastructure definitions under `infra/`
+
+The infrastructure is implemented as code but is **not represented as deployed production infrastructure until an AWS account deploys the templates and worker image**.
+
 ## Architecture
 
 ```text
@@ -135,7 +175,7 @@ Real-provider adapters are included for Deepgram, OpenAI speech-to-text, and AWS
 
 ## Resume-ready description
 
-**Auri | React, FastAPI, WebSockets, Docker, AWS, LLM APIs**
+**Auri | React, FastAPI, Docker, AWS Batch, SQS, S3, DynamoDB, Bedrock**
 
 - Built a full-stack Voice AI reliability platform with a **240-scenario evaluation suite across 10 domains, 8 intents, 3 interaction variants, and 3 noise profiles**, supporting up to **2,160 stack-condition evaluations** across three configurable voice pipelines.
 - Engineered WER, **p50/p95 response and end-of-turn latency**, interruption, task-success, cost, and failure-stage reporting, with structured diagnostics that localize errors across **VAD, ASR, LLM, and tool execution**.
