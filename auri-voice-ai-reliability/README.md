@@ -105,6 +105,23 @@ Auri now includes `benchmark/add_noise.py` to mix clean speech with a public noi
 
 This lets the same utterance be evaluated under controlled degradation rather than comparing unrelated noisy clips.
 
+## Automated real-audio robustness benchmark
+
+Auri includes `.github/workflows/auri-real-benchmark.yml`, which is designed to run a fresh **60-condition ASR robustness benchmark**:
+
+- **15 public Mini LibriSpeech utterances**
+- **4 acoustic conditions per utterance**: clean, 20 dB, 10 dB, and 0 dB SNR
+- public `jackhammer.wav` mixed at controlled SNR
+- pretrained **Wav2Vec2 ASR**
+- **60 fresh ASR inference runs**
+- micro-WER and word accuracy
+- exact-match rate
+- p50 / p95 inference latency
+- p50 / p95 real-time factor
+- WER degradation relative to clean speech
+
+The workflow writes `REAL_WAV2VEC2_REPORT.md` and `real_wav2vec2_minilibrispeech.json` when executed. Those generated values should only be quoted after the workflow has completed successfully.
+
 ## Benchmark commands
 
 ```bash
