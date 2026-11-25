@@ -1,0 +1,274 @@
+name: Auri Real Audio Benchmark
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/auri-real-benchmark.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ASR dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install numpy scipy soundfile
+
+      - name: Download public speech and noise samples
+        run: |
+          mkdir -p /tmp/auri-data
+          curl -L "https://www.openslr.org/resources/31/dev-clean-2.tar.gz" -o /tmp/auri-data/dev-clean-2.tar.gz
+          tar -xzf /tmp/auri-data/dev-clean-2.tar.gz -C /tmp/auri-data
+          curl -L "https://raw.githubusercontent.com/realpython/python-speech-recognition/master/audio_files/jackhammer.wav" -o /tmp/auri-data/jackhammer.wav
+
+      - name: Run Wav2Vec2 robustness benchmark
+        run: |
+          python - <<'PY'
+          import json, math, re, statistics, time
+          from pathlib import Path
+
+          import numpy as np
+          import soundfile as sf
+          import torch
+          import torchaudio
+          from scipy.signal import resample_poly
+
+          ROOT = Path("/tmp/auri-data/LibriSpeech/dev-clean-2")
+          NOISE_PATH = Path("/tmp/auri-data/jackhammer.wav")
+          OUT = Path("benchmark/results")
+          OUT.mkdir(parents=True, exist_ok=True)
+
+          N_UTTERANCES = 15
+          CONDITIONS = [("clean", None), ("20db", 20.0), ("10db", 10.0), ("0db", 0.0)]
+
+          def normalize(text):
+              return re.findall(r"[A-Z0-9']+", text.upper())
+
+          def edit_distance(ref, hyp):
+              prev = list(range(len(hyp) + 1))
+              for i, a in enumerate(ref, 1):
+                  cur = [i]
+                  for j, b in enumerate(hyp, 1):
+                      cur.append(min(
+                          prev[j] + 1,
+                          cur[j - 1] + 1,
+                          prev[j - 1] + (a != b),
+                      ))
+                  prev = cur
+              return prev[-1]
+
+          def resample(y, sr, target=16000):
+              if y.ndim > 1:
+                  y = y.mean(axis=1)
+              if sr == target:
+                  return y.astype(np.float32)
+              g = math.gcd(int(sr), target)
+              return resample_poly(y, target // g, int(sr) // g).astype(np.float32)
+
+          def mix_at_snr(speech, noise, snr_db):
+              if len(noise) < len(speech):
+                  noise = np.tile(noise, int(np.ceil(len(speech) / len(noise))))
+              noise = noise[:len(speech)]
+              speech_rms = np.sqrt(np.mean(speech ** 2) + 1e-12)
+              noise_rms = np.sqrt(np.mean(noise ** 2) + 1e-12)
+              scaled = noise * ((speech_rms / (10 ** (snr_db / 20))) / noise_rms)
+              mixed = speech + scaled
+              peak = np.max(np.abs(mixed))
+              if peak > 0.999:
+                  mixed = mixed / peak * 0.999
+              return mixed.astype(np.float32)
+
+          transcripts = {}
+          for trans_file in ROOT.rglob("*.trans.txt"):
+              for line in trans_file.read_text(encoding="utf-8").splitlines():
+                  utt_id, text = line.split(" ", 1)
+                  transcripts[utt_id] = text
+
+          audio_files = sorted(ROOT.rglob("*.flac"))
+          if len(audio_files) < N_UTTERANCES:
+              raise RuntimeError(f"Only found {len(audio_files)} FLAC files")
+
+          indices = np.linspace(0, len(audio_files) - 1, N_UTTERANCES, dtype=int)
+          selected = [audio_files[int(i)] for i in indices]
+
+          noise, noise_sr = sf.read(NOISE_PATH)
+          noise = resample(np.asarray(noise), noise_sr)
+
+          bundle = torchaudio.pipelines.WAV2VEC2_ASR_BASE_960H
+          model = bundle.get_model().eval()
+          labels = bundle.get_labels()
+          torch.set_num_threads(2)
+
+          def decode(waveform):
+              tensor = torch.from_numpy(waveform).float().unsqueeze(0)
+              started = time.perf_counter()
+              with torch.inference_mode():
+                  emissions, _ = model(tensor)
+              latency_ms = (time.perf_counter() - started) * 1000
+              ids = torch.argmax(emissions[0], dim=-1)
+              ids = torch.unique_consecutive(ids)
+              chars = [labels[int(i)] for i in ids if int(i) != 0]
+              text = "".join(chars).replace("|", " ").strip()
+              return text, latency_ms
+
+          rows = []
+          for audio_path in selected:
+              utt_id = audio_path.stem
+              reference = transcripts[utt_id]
+              speech, sr = sf.read(audio_path)
+              speech = resample(np.asarray(speech), sr)
+              duration = len(speech) / 16000
+
+              for condition, snr in CONDITIONS:
+                  waveform = speech if snr is None else mix_at_snr(speech, noise, snr)
+                  hypothesis, latency_ms = decode(waveform)
+                  ref_words = normalize(reference)
+                  hyp_words = normalize(hypothesis)
+                  errors = edit_distance(ref_words, hyp_words)
+                  rows.append({
+                      "utterance_id": utt_id,
+                      "condition": condition,
+                      "snr_db": snr,
+                      "reference": reference,
+                      "hypothesis": hypothesis,
+                      "reference_words": len(ref_words),
+                      "word_errors": errors,
+                      "wer": round(errors / max(1, len(ref_words)), 4),
+                      "exact_match": ref_words == hyp_words,
+                      "audio_duration_s": round(duration, 4),
+                      "inference_latency_ms": round(latency_ms, 2),
+                      "real_time_factor": round((latency_ms / 1000) / duration, 4),
+                  })
+
+          def pct(values, q):
+              values = sorted(values)
+              if not values:
+                  return 0.0
+              pos = (len(values) - 1) * q
+              lo, hi = math.floor(pos), math.ceil(pos)
+              if lo == hi:
+                  return values[lo]
+              w = pos - lo
+              return values[lo] * (1 - w) + values[hi] * w
+
+          summaries = {}
+          for condition, _ in CONDITIONS:
+              group = [r for r in rows if r["condition"] == condition]
+              errors = sum(r["word_errors"] for r in group)
+              words = sum(r["reference_words"] for r in group)
+              lat = [r["inference_latency_ms"] for r in group]
+              rtf = [r["real_time_factor"] for r in group]
+              summaries[condition] = {
+                  "utterances": len(group),
+                  "reference_words": words,
+                  "word_errors": errors,
+                  "micro_wer": round(errors / words, 4),
+                  "word_accuracy_percent": round(max(0, 1 - errors / words) * 100, 2),
+                  "exact_match_rate_percent": round(
+                      sum(r["exact_match"] for r in group) / len(group) * 100, 2
+                  ),
+                  "p50_inference_latency_ms": round(pct(lat, 0.50), 2),
+                  "p95_inference_latency_ms": round(pct(lat, 0.95), 2),
+                  "p50_real_time_factor": round(pct(rtf, 0.50), 4),
+                  "p95_real_time_factor": round(pct(rtf, 0.95), 4),
+              }
+
+          clean_wer = summaries["clean"]["micro_wer"]
+          for condition in ["20db", "10db", "0db"]:
+              summaries[condition]["absolute_wer_increase_vs_clean"] = round(
+                  summaries[condition]["micro_wer"] - clean_wer, 4
+              )
+
+          report = {
+              "benchmark_type": "measured",
+              "dataset": "Mini LibriSpeech dev-clean-2 (OpenSLR SLR31)",
+              "speech_source": "https://www.openslr.org/31/",
+              "noise_source": "Real Python jackhammer.wav",
+              "noise_source_url": "https://raw.githubusercontent.com/realpython/python-speech-recognition/master/audio_files/jackhammer.wav",
+              "model": "torchaudio WAV2VEC2_ASR_BASE_960H",
+              "utterances": N_UTTERANCES,
+              "conditions_per_utterance": len(CONDITIONS),
+              "total_asr_runs": len(rows),
+              "conditions": summaries,
+              "rows": rows,
+          }
+
+          json_path = OUT / "real_wav2vec2_minilibrispeech.json"
+          json_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+
+          md = [
+              "# Real Wav2Vec2 Noise-Robustness Benchmark",
+              "",
+              "This report contains fresh ASR measurements produced by Auri's GitHub Actions benchmark.",
+              "",
+              f"- Dataset: **Mini LibriSpeech dev-clean-2**",
+              f"- Utterances sampled: **{N_UTTERANCES}**",
+              f"- Conditions per utterance: **{len(CONDITIONS)}**",
+              f"- Total ASR runs: **{len(rows)}**",
+              "- Model: **WAV2VEC2_ASR_BASE_960H**",
+              "- Noise: public **jackhammer.wav** mixed at controlled SNR",
+              "",
+              "## Aggregate results",
+              "",
+              "| Condition | Micro-WER | Word accuracy | Exact match | p50 latency | p95 latency | p50 RTF |",
+              "|---|---:|---:|---:|---:|---:|---:|",
+          ]
+          for condition, _ in CONDITIONS:
+              s = summaries[condition]
+              md.append(
+                  f"| {condition} | {s['micro_wer']*100:.2f}% | "
+                  f"{s['word_accuracy_percent']:.2f}% | "
+                  f"{s['exact_match_rate_percent']:.2f}% | "
+                  f"{s['p50_inference_latency_ms']:.0f} ms | "
+                  f"{s['p95_inference_latency_ms']:.0f} ms | "
+                  f"{s['p50_real_time_factor']:.3f} |"
+              )
+
+          md += [
+              "",
+              "## WER degradation vs. clean",
+              "",
+          ]
+          for condition in ["20db", "10db", "0db"]:
+              delta = summaries[condition]["absolute_wer_increase_vs_clean"]
+              md.append(f"- {condition}: **{delta*100:+.2f} percentage points**")
+
+          md += [
+              "",
+              "## Claim boundaries",
+              "",
+              "- These are fresh measurements from the public audio files downloaded by this workflow.",
+              "- Latency is measured on a GitHub-hosted CPU runner and is useful for relative comparison, not production SLA claims.",
+              "- Wav2Vec2 was trained/fine-tuned on LibriSpeech-family data, so this run is a robustness experiment, not an out-of-domain generalization benchmark.",
+              "",
+          ]
+          (OUT / "REAL_WAV2VEC2_REPORT.md").write_text("\n".join(md), encoding="utf-8")
+          print(json.dumps(summaries, indent=2))
+          PY
+
+      - name: Commit measured results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add benchmark/results/real_wav2vec2_minilibrispeech.json
+          git add benchmark/results/REAL_WAV2VEC2_REPORT.md
+          if git diff --cached --quiet; then
+            echo "No result changes"
+          else
+            git commit -m "Add measured Wav2Vec2 noise robustness benchmark"
+            git push
+          fi
